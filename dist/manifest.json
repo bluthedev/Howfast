@@ -1,0 +1,17 @@
+{
+  "name": "Howfast - Mobile Keyboard Speed Test",
+  "short_name": "Howfast",
+  "description": "Test how fast your thumbs can type on mobile keyboards!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0d14",
+  "theme_color": "#00f2fe",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
