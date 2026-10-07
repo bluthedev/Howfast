@@ -8,8 +8,10 @@ import { TypingArea } from './components/TypingArea.jsx';
 import { ResultModal } from './components/ResultModal.jsx';
 import { LeaderboardModal } from './components/LeaderboardModal.jsx';
 import { CommunityChat } from './components/CommunityChat.jsx';
+import { AdminModal } from './components/AdminModal.jsx';
 import { sound } from './utils/audio.js';
 import { getRandomWords, getDailyChallengeWords } from './utils/wordBanks.js';
+import { Shield } from 'lucide-react';
 
 export function App() {
   const [mode, setMode] = useState('story'); // Default to interesting story mode!
@@ -35,6 +37,7 @@ export function App() {
   // Modals & UI
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(sound.isMuted);
   const [isHapticsEnabled, setIsHapticsEnabled] = useState(sound.isHapticsEnabled);
@@ -346,8 +349,16 @@ export function App() {
           />
         </div>
 
-        <footer className="px-4 text-center text-[10px] text-zinc-600 font-mono">
-          clean, fast mobile typing • press space to advance
+        <footer className="px-4 text-[10px] text-zinc-600 font-mono flex items-center justify-between">
+          <span>clean, fast mobile typing</span>
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="text-zinc-600 hover:text-zinc-400 transition-colors py-1 px-1.5 rounded flex items-center gap-1 active:scale-95"
+            title="Platform Monitor (PIN: 147258)"
+          >
+            <Shield className="w-3 h-3 text-zinc-500" />
+            <span>monitor</span>
+          </button>
         </footer>
       </main>
 
@@ -373,6 +384,12 @@ export function App() {
         onClose={() => setIsChatOpen(false)}
         userWpm={liveWpm || personalBest}
         userBadge="Texter"
+      />
+
+      {/* Admin Activity Monitor */}
+      <AdminModal
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
       />
     </div>
   );

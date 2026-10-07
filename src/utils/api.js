@@ -227,6 +227,106 @@ export async function fetchGlobalStats() {
   return { totalRuns: 1, recordWpm: 92, avgWpm: 68.5 };
 }
 
+export async function deleteScore(id) {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('scores').delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn('Supabase delete score failed:', err);
+    }
+  }
+
+  // Local storage fallback
+  try {
+    const list = JSON.parse(localStorage.getItem('howfast_local_scores') || '[]');
+    const updated = list.filter(item => item.id !== id);
+    localStorage.setItem('howfast_local_scores', JSON.stringify(updated));
+  } catch (e) {}
+  return true;
+}
+
+export async function deleteMessage(id) {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('messages').delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn('Supabase delete message failed:', err);
+    }
+  }
+
+  // Local storage fallback
+  try {
+    const list = JSON.parse(localStorage.getItem('howfast_local_messages') || '[]');
+    const updated = list.filter(item => item.id !== id);
+    localStorage.setItem('howfast_local_messages', JSON.stringify(updated));
+  } catch (e) {}
+  return true;
+}
+
+export async function fetchAdminData() {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const [scoresRes, msgsRes] = await Promise.all([
+        supabase.from('scores').select('*').order('id', { ascending: false }).limit(80),
+        supabase.from('messages').select('*').order('id', { ascending: false }).limit(80),
+      ]);
+
+      const scores = scoresRes.data || [];
+      const messages = msgsRes.data || [];
+
+      // Calculate aggregations
+      let recordWpm = 0;
+      let totalWpm = 0;
+      const devices = {};
+      const modes = {};
+
+      scores.forEach((s) => {
+        if (s.wpm > recordWpm) recordWpm = s.wpm;
+        totalWpm += s.wpm;
+        devices[s.device_type || 'Unknown'] = (devices[s.device_type || 'Unknown'] || 0) + 1;
+        modes[s.mode || 'other'] = (modes[s.mode || 'other'] || 0) + 1;
+      });
+
+      const avgWpm = scores.length > 0 ? (totalWpm / scores.length).toFixed(1) : 0;
+
+      return {
+        scores,
+        messages,
+        stats: {
+          totalScores: scores.length,
+          totalMessages: messages.length,
+          recordWpm,
+          avgWpm,
+          devices,
+          modes,
+        },
+      };
+    } catch (err) {
+      console.warn('Supabase admin fetch failed:', err);
+    }
+  }
+
+  // Local storage fallback
+  const scores = JSON.parse(localStorage.getItem('howfast_local_scores') || '[]');
+  const messages = JSON.parse(localStorage.getItem('howfast_local_messages') || '[]');
+  return {
+    scores,
+    messages,
+    stats: {
+      totalScores: scores.length,
+      totalMessages: messages.length,
+      recordWpm: scores.reduce((max, s) => Math.max(max, s.wpm), 0),
+      avgWpm: scores.length > 0 ? (scores.reduce((sum, s) => sum + s.wpm, 0) / scores.length).toFixed(1) : 0,
+      devices: { mobile: scores.length },
+      modes: { '30s': scores.length },
+    },
+  };
+}
+
 // Local storage fallbacks
 function getLocalLeaderboard(mode) {
   try {
@@ -248,3 +348,4 @@ function saveLocalScore(score) {
     localStorage.setItem('howfast_local_scores', JSON.stringify(list));
   } catch (e) {}
 }
+

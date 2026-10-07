@@ -32,9 +32,11 @@ ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public read scores" ON public.scores FOR SELECT USING (true);
 CREATE POLICY "Public insert scores" ON public.scores FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public delete scores" ON public.scores FOR DELETE USING (true);
 
 CREATE POLICY "Public read messages" ON public.messages FOR SELECT USING (true);
 CREATE POLICY "Public insert messages" ON public.messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public delete messages" ON public.messages FOR DELETE USING (true);
 
 -- 4. Enable Supabase Realtime (WebSockets) for instant multi-user sync!
 ALTER PUBLICATION supabase_realtime ADD TABLE public.scores;
