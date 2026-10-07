@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, MessageSquare, RefreshCw, Sparkles, Smile } from 'lucide-react';
+import { X, Send, MessageSquare, RefreshCw, Radio } from 'lucide-react';
 import { fetchMessages, sendMessage } from '../utils/api.js';
+import { supabase, isSupabaseConfigured } from '../utils/supabase.js';
 
 export function CommunityChat({
   isOpen,
@@ -32,8 +33,29 @@ export function CommunityChat({
   useEffect(() => {
     if (isOpen) {
       loadMessages();
-      const interval = setInterval(loadMessages, 3500);
-      return () => clearInterval(interval);
+
+      // Realtime WebSocket channel with Supabase
+      if (isSupabaseConfigured && supabase) {
+        const channel = supabase
+          .channel('public:messages')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+            if (payload && payload.new) {
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === payload.new.id)) return prev;
+                return [...prev, payload.new];
+              });
+            }
+          })
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      } else {
+        // Fallback polling
+        const interval = setInterval(loadMessages, 3500);
+        return () => clearInterval(interval);
+      }
     }
   }, [isOpen]);
 
@@ -63,7 +85,9 @@ export function CommunityChat({
         wpm: userWpm,
         badge: userBadge,
       });
-      if (newMsg) {
+
+      // If not using real-time websocket, append manually
+      if (!isSupabaseConfigured && newMsg) {
         setMessages((prev) => [...prev, newMsg]);
       }
     } catch (err) {
@@ -87,9 +111,17 @@ export function CommunityChat({
               <MessageSquare className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-wide flex items-center gap-1.5 text-zinc-100">
-                Community Lounge
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold tracking-wide text-zinc-100">
+                  Community Lounge
+                </h2>
+                {isSupabaseConfigured && (
+                  <span className="flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE
+                  </span>
+                )}
+              </div>
               <p className="text-[10px] text-zinc-400">Chat with typists worldwide</p>
             </div>
           </div>
@@ -116,7 +148,7 @@ export function CommunityChat({
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-zinc-500 text-xs">
               <MessageSquare className="w-8 h-8 mb-2 opacity-40" />
-              <span>No messages yet. Start the conversation!</span>
+              <span>No messages yet. Say hello to the room!</span>
             </div>
           ) : (
             messages.map((msg) => {
@@ -129,10 +161,10 @@ export function CommunityChat({
                   }`}
                 >
                   {/* Sender metadata */}
-                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 px-1">
+                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 px-1 font-mono">
                     <span className="font-semibold text-zinc-300">{msg.username}</span>
                     {msg.wpm > 0 && (
-                      <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-amber-400 font-mono font-medium text-[9px]">
+                      <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-amber-400 font-medium text-[9px]">
                         {msg.wpm} WPM
                       </span>
                     )}
@@ -177,7 +209,7 @@ export function CommunityChat({
               onChange={(e) => setAuthorName(e.target.value)}
               placeholder="Your Name"
               maxLength={18}
-              className="w-28 px-2.5 py-1.5 text-[11px] rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-amber-500/50"
+              className="w-28 px-2.5 py-1.5 text-[11px] rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-amber-500/50 font-mono"
             />
             <input
               type="text"
@@ -190,7 +222,7 @@ export function CommunityChat({
             <button
               type="submit"
               disabled={!inputText.trim() || isSending}
-              className="p-2.5 rounded-xl bg-amber-500 text-black font-bold disabled:opacity-40 transition-all active:scale-95 flex items-center justify-center shadow-sm shadow-amber-500/20"
+              className="p-2.5 rounded-xl bg-amber-400 text-zinc-950 font-bold disabled:opacity-40 transition-all active:scale-95 flex items-center justify-center shadow-sm"
             >
               <Send className="w-3.5 h-3.5" />
             </button>

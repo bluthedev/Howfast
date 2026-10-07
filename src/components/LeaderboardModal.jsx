@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, X, Medal, Smartphone, RefreshCw } from 'lucide-react';
 import { fetchLeaderboard } from '../utils/api.js';
+import { supabase, isSupabaseConfigured } from '../utils/supabase.js';
 
 export function LeaderboardModal({ isOpen, onClose }) {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -23,6 +24,20 @@ export function LeaderboardModal({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       loadData();
+
+      // Realtime subscription for scores
+      if (isSupabaseConfigured && supabase) {
+        const channel = supabase
+          .channel('public:scores')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'scores' }, () => {
+            loadData();
+          })
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }
     }
   }, [isOpen, selectedMode, timeframe]);
 
@@ -55,10 +70,18 @@ export function LeaderboardModal({ isOpen, onClose }) {
               <Trophy className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-tight text-zinc-100">
-                Leaderboard
-              </h2>
-              <p className="text-[10px] text-zinc-400">Top mobile typists</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold tracking-tight text-zinc-100">
+                  Global Leaderboard
+                </h2>
+                {isSupabaseConfigured && (
+                  <span className="flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-400">Top mobile typists worldwide</p>
             </div>
           </div>
 
@@ -125,9 +148,10 @@ export function LeaderboardModal({ isOpen, onClose }) {
               <span>Loading rankings...</span>
             </div>
           ) : leaderboard.length === 0 ? (
-            <div className="h-44 flex flex-col items-center justify-center text-zinc-500 text-xs">
+            <div className="h-44 flex flex-col items-center justify-center text-zinc-500 text-xs font-mono">
               <Medal className="w-6 h-6 mb-1 opacity-40" />
-              <p>No scores found yet.</p>
+              <p>No scores recorded yet.</p>
+              <p className="text-[10px] text-amber-400">Be the first to set a record!</p>
             </div>
           ) : (
             leaderboard.map((item) => (
